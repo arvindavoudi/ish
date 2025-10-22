@@ -169,6 +169,7 @@ static inline int sz(int size) {
         case 8: return size_8;
         case 16: return size_16;
         case 32: return size_32;
+        case 64: return size_64;
         default: return -1;
     }
 }

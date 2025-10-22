@@ -9,8 +9,8 @@
 #define REG_LIST reg_a,reg_c,reg_d,reg_b,reg_sp,reg_bp,reg_si,reg_di
 # sync with enum arg
 #define GADGET_LIST REG_LIST,imm,mem,addr,gs
-# sync with enum size
-#define SIZE_LIST 8,16,32
+# sync with enum size (now includes 64-bit for x86-64 support)
+#define SIZE_LIST 8,16,32,64
 
 # darwin/linux compatibility
 .macro .pushsection_rodata

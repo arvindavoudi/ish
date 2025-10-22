@@ -109,6 +109,8 @@ crosspage_store_\id :
             \macro \args, \size, w, w
         .elseif \size == 32
             \macro \args, \size, d, l
+        .elseif \size == 64
+            \macro \args, \size, q, q
         .else
             .error "bad size"
         .endif
@@ -119,6 +121,8 @@ crosspage_store_\id :
             \macro \size, w, w
         .elseif \size == 32
             \macro \size, d, l
+        .elseif \size == 64
+            \macro \size, q, q
         .else
             .error "bad size"
         .endif
@@ -208,5 +212,9 @@ crosspage_store_\id :
     movl %ebp, CPU_ebp(%_cpu)
     movl %_esp, CPU_esp(%_cpu)
 .endm
+
+# 64-bit register support - extended registers R8-R15 are stored in CPU state
+# We don't keep them in host registers due to limited register availability
+# They're loaded/stored on demand from CPU state structure
 
 # vim: ft=gas
