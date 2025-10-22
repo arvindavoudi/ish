@@ -5,6 +5,12 @@
 
 #undef oz
 #define oz OP_SIZE
+// oze (operand size effective) considers REX.W for 64-bit operations
+#if OP_SIZE == 32
+#define oze EFFECTIVE_SIZE
+#else
+#define oze oz
+#endif
 #define reg_ah reg_sp
 #define reg_ch reg_bp
 #define reg_dh reg_si
@@ -33,6 +39,18 @@ __no_instrument DECODER_RET glue(DECODER_NAME, OP_SIZE)(DECODER_ARGS) {
 #define READMODRM_NOMEM READMODRM; if (modrm.type != modrm_reg) UNDEFINED
 
 restart:
+    // Reset and parse REX prefix for x86-64 (only in 32-bit mode, not 16-bit)
+#if OP_SIZE == 32
+    rex.present = false;
+    rex.w = false;
+    rex.r = false;
+    rex.x = false;
+    rex.b = false;
+    PARSE_REX_PREFIX();
+    if (rex.present) {
+        TRACE("REX.W=%d REX.R=%d REX.X=%d REX.B=%d ", rex.w, rex.r, rex.x, rex.b);
+    }
+#endif
     TRACEIP();
     READINSN;
     switch (insn) {
@@ -40,15 +58,15 @@ restart:
         case x+0x0: TRACEI(op " reg8, modrm8"); \
                    READMODRM; OP(modrm_reg, modrm_val,8); break; \
         case x+0x1: TRACEI(op " reg, modrm"); \
-                   READMODRM; OP(modrm_reg, modrm_val,oz); break; \
+                   READMODRM; OP(modrm_reg, modrm_val,oze); break; \
         case x+0x2: TRACEI(op " modrm8, reg8"); \
                    READMODRM; OP(modrm_val, modrm_reg,8); break; \
         case x+0x3: TRACEI(op " modrm, reg"); \
-                   READMODRM; OP(modrm_val, modrm_reg,oz); break; \
+                   READMODRM; OP(modrm_val, modrm_reg,oze); break; \
         case x+0x4: TRACEI(op " imm8, al\t"); \
                    READIMM8; OP(imm, reg_a,8); break; \
         case x+0x5: TRACEI(op " imm, oax\t"); \
-                   READIMM; OP(imm, reg_a,oz); break
+                   READIMM; OP(imm, reg_a,oze); break
 
         MAKE_OP(0x00, ADD, "add");
         MAKE_OP(0x08, OR, "or");
@@ -57,6 +75,9 @@ restart:
             // 2-byte opcode prefix
             READINSN;
             switch (insn) {
+                case 0x05: TRACEI("syscall");
+                           INT(INT_SYSCALL64); break;
+
                 case 0x18 ... 0x1f: TRACEI("nop modrm\t"); READMODRM; break;
 
                 case 0x28: TRACEI("movaps xmm:modrm, xmm");
@@ -682,6 +703,9 @@ restart:
         case 0x5e: TRACEI("pop osi"); POP(reg_si,oz); break;
         case 0x5f: TRACEI("pop odi"); POP(reg_di,oz); break;
 
+        case 0x63: TRACEI("movsxd modrm, reg");
+                   READMODRM; MOVSX(modrm_val, modrm_reg,32,oze); break;
+
         case 0x65: TRACE("segment gs\n"); SEG_GS(); goto restart;
 
         case 0x60: TRACE("pusha");
@@ -785,24 +809,24 @@ restart:
         case 0x84: TRACEI("test reg8, modrm8");
                    READMODRM; TEST(modrm_reg, modrm_val,8); break;
         case 0x85: TRACEI("test reg, modrm");
-                   READMODRM; TEST(modrm_reg, modrm_val,oz); break;
+                   READMODRM; TEST(modrm_reg, modrm_val,oze); break;
 
         case 0x86: TRACEI("xchg reg8, modrm8");
                    READMODRM; XCHG(modrm_reg, modrm_val,8); break;
         case 0x87: TRACEI("xchg reg, modrm");
-                   READMODRM; XCHG(modrm_reg, modrm_val,oz); break;
+                   READMODRM; XCHG(modrm_reg, modrm_val,oze); break;
 
         case 0x88: TRACEI("mov reg8, modrm8");
                    READMODRM; MOV(modrm_reg, modrm_val,8); break;
         case 0x89: TRACEI("mov reg, modrm");
-                   READMODRM; MOV(modrm_reg, modrm_val,oz); break;
+                   READMODRM; MOV(modrm_reg, modrm_val,oze); break;
         case 0x8a: TRACEI("mov modrm8, reg8");
                    READMODRM; MOV(modrm_val, modrm_reg,8); break;
         case 0x8b: TRACEI("mov modrm, reg");
-                   READMODRM; MOV(modrm_val, modrm_reg,oz); break;
+                   READMODRM; MOV(modrm_val, modrm_reg,oze); break;
 
         case 0x8d: TRACEI("lea\t\t"); READMODRM_MEM;
-                   MOV(addr, modrm_reg,oz); break;
+                   MOV(addr, modrm_reg,oze); break;
 
         // we only support fs and gs, and that too not very well.
         // gs does nothing: see comment in sys/tls.c

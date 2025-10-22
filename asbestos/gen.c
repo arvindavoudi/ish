@@ -82,7 +82,8 @@ void gen_exit(struct gen_state *state) {
 #define DECLARE_LOCALS \
     dword_t addr_offset = 0; \
     bool end_block = false; \
-    bool seg_gs = false
+    bool seg_gs = false; \
+    struct rex_prefix rex = {0}
 
 #define FINISH \
     return !end_block
@@ -93,9 +94,24 @@ void gen_exit(struct gen_state *state) {
     if (!tlb_read(tlb, state->ip - size/8, &name, size/8)) SEGFAULT; \
 } while (0)
 
-#define READMODRM if (!modrm_decode32(&state->ip, tlb, &modrm)) SEGFAULT
+#define READMODRM if (!modrm_decode64(&state->ip, tlb, &modrm, rex)) SEGFAULT
 #define READADDR _READIMM(addr_offset, 32)
 #define SEG_GS() seg_gs = true
+#define PARSE_REX_PREFIX() do { \
+    byte_t peek_byte; \
+    if (tlb_read(tlb, state->ip, &peek_byte, 1) && \
+        peek_byte >= REX_PREFIX_MIN && peek_byte <= REX_PREFIX_MAX) { \
+        _READIMM(peek_byte, 8); \
+        rex.present = true; \
+        rex.w = REX_W(peek_byte); \
+        rex.r = REX_R(peek_byte); \
+        rex.x = REX_X(peek_byte); \
+        rex.b = REX_B(peek_byte); \
+    } \
+} while (0)
+
+// Determine effective operand size: 64-bit if REX.W=1, otherwise use default OP_SIZE
+#define EFFECTIVE_SIZE (rex.w ? 64 : oz)
 
 // This should stay in sync with the definition of .gadget_array in gadgets.h
 enum arg {
