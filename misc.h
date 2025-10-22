@@ -109,16 +109,17 @@ typedef int32_t sdword_t;
 typedef uint16_t word_t;
 typedef uint8_t byte_t;
 
-typedef dword_t addr_t;
-typedef dword_t uint_t;
-typedef sdword_t int_t;
+// 64-bit architecture: addresses are now 64-bit
+typedef qword_t addr_t;
+typedef qword_t uint_t;
+typedef sqword_t int_t;
 
 typedef sdword_t pid_t_;
 typedef dword_t uid_t_;
 typedef word_t mode_t_;
 typedef sqword_t off_t_;
-typedef dword_t time_t_;
-typedef dword_t clock_t_;
+typedef qword_t time_t_;  // 64-bit time
+typedef qword_t clock_t_;  // 64-bit clock
 
 #define uint(size) glue3(uint,size,_t)
 #define sint(size) glue3(int,size,_t)

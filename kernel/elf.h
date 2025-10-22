@@ -12,6 +12,7 @@
 #define ELF_EXECUTABLE 2
 #define ELF_DYNAMIC 3
 #define ELF_X86 3
+#define ELF_X86_64 62  // x86-64 machine type
 
 struct elf_header {
     uint32_t magic;
@@ -24,9 +25,9 @@ struct elf_header {
     uint16_t type; // library or executable or what
     uint16_t machine;
     uint32_t elfversion2;
-    dword_t entry_point;
-    dword_t prghead_off;
-    dword_t secthead_off;
+    qword_t entry_point;     // 64-bit entry point
+    qword_t prghead_off;     // 64-bit program header offset
+    qword_t secthead_off;    // 64-bit section header offset
     uint32_t flags;
     uint16_t header_size;
     uint16_t phent_size;
@@ -48,13 +49,13 @@ struct elf_header {
 
 struct prg_header {
     uint32_t type;
-    dword_t offset;
-    dword_t vaddr;
-    dword_t paddr;
-    dword_t filesize;
-    dword_t memsize;
-    uint32_t flags;
-    dword_t alignment; // must be power of 2
+    uint32_t flags;          // In ELF64, flags come before offsets
+    qword_t offset;          // 64-bit file offset
+    qword_t vaddr;           // 64-bit virtual address
+    qword_t paddr;           // 64-bit physical address
+    qword_t filesize;        // 64-bit file size
+    qword_t memsize;         // 64-bit memory size
+    qword_t alignment;       // 64-bit alignment (must be power of 2)
 };
 
 #define PH_R (1 << 2)
@@ -62,8 +63,8 @@ struct prg_header {
 #define PH_X (1 << 0)
 
 struct aux_ent {
-    uint32_t type;
-    uint32_t value;
+    qword_t type;   // 64-bit auxiliary vector type
+    qword_t value;  // 64-bit auxiliary vector value
 };
 
 #define AX_PHDR 3
@@ -88,8 +89,8 @@ struct aux_ent {
 #define AX_SYSINFO_EHDR 33
 
 struct dyn_ent {
-    dword_t tag;
-    dword_t val;
+    qword_t tag;    // 64-bit dynamic entry tag
+    qword_t val;    // 64-bit dynamic entry value
 };
 
 #define DT_NULL 0
@@ -99,11 +100,11 @@ struct dyn_ent {
 
 struct elf_sym {
     uint32_t name;
-    addr_t value;
-    dword_t size;
     byte_t info;
     byte_t other;
     uint16_t shndx;
+    qword_t value;  // 64-bit symbol value
+    qword_t size;   // 64-bit symbol size
 };
 
 #endif

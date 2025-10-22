@@ -12,4 +12,5 @@
 #define INT_DOUBLE 8 // interrupt during interrupt, i.e. interruptception
 #define INT_GPF 13
 #define INT_TIMER 32
-#define INT_SYSCALL 0x80
+#define INT_SYSCALL 0x80        // 32-bit system call (INT 0x80)
+#define INT_SYSCALL64 0x81      // 64-bit system call (SYSCALL instruction)
