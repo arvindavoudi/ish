@@ -87,7 +87,11 @@ struct cpu_state {
 #undef _REG64X
 #undef _REG64
 
-    qword_t rip;  // 64-bit instruction pointer
+    // Instruction pointer - x86-64 uses RIP (64-bit)
+    union {
+        qword_t rip;    // 64-bit instruction pointer
+        dword_t eip;    // 32-bit alias for backward compatibility
+    };
 
     // flags - x86-64 uses RFLAGS (64-bit)
     union {
