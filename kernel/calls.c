@@ -254,6 +254,145 @@ syscall_t syscall_table[] = {
 
 #define NUM_SYSCALLS (sizeof(syscall_table) / sizeof(syscall_table[0]))
 
+// x86-64 syscall table
+// x86-64 uses different syscall numbers than x86-32
+// Reference: https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl
+syscall_t syscall_table_64[] = {
+    [0]   = (syscall_t) sys_read,              // read
+    [1]   = (syscall_t) sys_write,             // write
+    [2]   = (syscall_t) sys_open,              // open
+    [3]   = (syscall_t) sys_close,             // close
+    [4]   = (syscall_t) sys_stat64,            // stat
+    [5]   = (syscall_t) sys_fstat64,           // fstat
+    [6]   = (syscall_t) sys_lstat64,           // lstat
+    [7]   = (syscall_t) sys_poll,              // poll
+    [8]   = (syscall_t) sys_lseek,             // lseek
+    [9]   = (syscall_t) sys_mmap2,             // mmap
+    [10]  = (syscall_t) sys_mprotect,          // mprotect
+    [11]  = (syscall_t) sys_munmap,            // munmap
+    [12]  = (syscall_t) sys_brk,               // brk
+    [13]  = (syscall_t) sys_rt_sigaction,      // rt_sigaction
+    [14]  = (syscall_t) sys_rt_sigprocmask,    // rt_sigprocmask
+    [15]  = (syscall_t) sys_rt_sigreturn,      // rt_sigreturn
+    [16]  = (syscall_t) sys_ioctl,             // ioctl
+    [17]  = (syscall_t) sys_pread,             // pread64
+    [18]  = (syscall_t) sys_pwrite,            // pwrite64
+    [19]  = (syscall_t) sys_readv,             // readv
+    [20]  = (syscall_t) sys_writev,            // writev
+    [21]  = (syscall_t) sys_access,            // access
+    [22]  = (syscall_t) sys_pipe,              // pipe
+    [23]  = (syscall_t) sys_select,            // select
+    [24]  = (syscall_t) sys_sched_yield,       // sched_yield
+    [25]  = (syscall_t) sys_mremap,            // mremap
+    [26]  = (syscall_t) sys_msync,             // msync
+    [32]  = (syscall_t) sys_dup,               // dup
+    [33]  = (syscall_t) sys_dup2,              // dup2
+    [34]  = (syscall_t) sys_pause,             // pause
+    [35]  = (syscall_t) sys_nanosleep,         // nanosleep
+    [37]  = (syscall_t) sys_alarm,             // alarm
+    [39]  = (syscall_t) sys_getpid,            // getpid
+    [41]  = (syscall_t) syscall_stub,          // socket
+    [42]  = (syscall_t) syscall_stub,          // connect
+    [43]  = (syscall_t) syscall_stub,          // accept
+    [56]  = (syscall_t) sys_clone,             // clone
+    [57]  = (syscall_t) sys_fork,              // fork
+    [58]  = (syscall_t) sys_vfork,             // vfork
+    [59]  = (syscall_t) sys_execve,            // execve
+    [60]  = (syscall_t) sys_exit,              // exit
+    [61]  = (syscall_t) sys_wait4,             // wait4
+    [62]  = (syscall_t) sys_kill,              // kill
+    [63]  = (syscall_t) sys_uname,             // uname
+    [72]  = (syscall_t) sys_fcntl,             // fcntl
+    [73]  = (syscall_t) sys_flock,             // flock
+    [74]  = (syscall_t) sys_fsync,             // fsync
+    [79]  = (syscall_t) sys_getcwd,            // getcwd
+    [80]  = (syscall_t) sys_chdir,             // chdir
+    [81]  = (syscall_t) sys_fchdir,            // fchdir
+    [82]  = (syscall_t) sys_rename,            // rename
+    [83]  = (syscall_t) sys_mkdir,             // mkdir
+    [84]  = (syscall_t) sys_rmdir,             // rmdir
+    [85]  = (syscall_t) sys_link,              // link
+    [86]  = (syscall_t) sys_unlink,            // unlink
+    [87]  = (syscall_t) sys_symlink,           // symlink
+    [88]  = (syscall_t) sys_readlink,          // readlink
+    [89]  = (syscall_t) sys_chmod,             // chmod
+    [90]  = (syscall_t) sys_fchmod,            // fchmod
+    [91]  = (syscall_t) sys_chown32,           // chown
+    [92]  = (syscall_t) sys_fchown32,          // fchown
+    [93]  = (syscall_t) sys_lchown,            // lchown
+    [94]  = (syscall_t) sys_umask,             // umask
+    [95]  = (syscall_t) sys_gettimeofday,      // gettimeofday
+    [96]  = (syscall_t) sys_getrlimit32,       // getrlimit
+    [97]  = (syscall_t) sys_getrusage,         // getrusage
+    [98]  = (syscall_t) sys_sysinfo,           // sysinfo
+    [99]  = (syscall_t) sys_times,             // times
+    [102] = (syscall_t) sys_getuid32,          // getuid
+    [103] = (syscall_t) sys_syslog,            // syslog
+    [104] = (syscall_t) sys_getgid32,          // getgid
+    [105] = (syscall_t) sys_setuid,            // setuid
+    [106] = (syscall_t) sys_setgid,            // setgid
+    [107] = (syscall_t) sys_geteuid32,         // geteuid
+    [108] = (syscall_t) sys_getegid32,         // getegid
+    [109] = (syscall_t) sys_setpgid,           // setpgid
+    [110] = (syscall_t) sys_getppid,           // getppid
+    [111] = (syscall_t) sys_getpgrp,           // getpgrp
+    [112] = (syscall_t) sys_setsid,            // setsid
+    [113] = (syscall_t) sys_setreuid,          // setreuid
+    [114] = (syscall_t) sys_setregid,          // setregid
+    [115] = (syscall_t) sys_getgroups,         // getgroups
+    [116] = (syscall_t) sys_setgroups,         // setgroups
+    [117] = (syscall_t) sys_setresuid,         // setresuid
+    [118] = (syscall_t) sys_getresuid,         // getresuid
+    [119] = (syscall_t) sys_setresgid,         // setresgid
+    [120] = (syscall_t) sys_getresgid,         // getresgid
+    [121] = (syscall_t) sys_getpgid,           // getpgid
+    [124] = (syscall_t) sys_getsid,            // getsid
+    [125] = (syscall_t) sys_capget,            // capget
+    [126] = (syscall_t) sys_capset,            // capset
+    [131] = (syscall_t) sys_sigaltstack,       // sigaltstack
+    [137] = (syscall_t) sys_statfs,            // statfs
+    [138] = (syscall_t) sys_fstatfs,           // fstatfs
+    [157] = (syscall_t) sys_prctl,             // prctl
+    [158] = (syscall_t) sys_arch_prctl,        // arch_prctl
+    [186] = (syscall_t) sys_gettid,            // gettid
+    [202] = (syscall_t) sys_futex,             // futex
+    [217] = (syscall_t) sys_getdents64,        // getdents64
+    [218] = (syscall_t) sys_set_tid_address,   // set_tid_address
+    [228] = (syscall_t) sys_clock_gettime,     // clock_gettime
+    [229] = (syscall_t) sys_clock_getres,      // clock_getres
+    [230] = (syscall_t) sys_clock_settime,     // clock_settime
+    [231] = (syscall_t) sys_exit_group,        // exit_group
+    [232] = (syscall_t) sys_epoll_wait,        // epoll_wait
+    [233] = (syscall_t) sys_epoll_ctl,         // epoll_ctl
+    [234] = (syscall_t) sys_tkill,             // tgkill
+    [257] = (syscall_t) sys_openat,            // openat
+    [258] = (syscall_t) sys_mkdirat,           // mkdirat
+    [259] = (syscall_t) sys_mknodat,           // mknodat
+    [260] = (syscall_t) sys_fchownat,          // fchownat
+    [261] = (syscall_t) sys_fstatat64,         // newfstatat
+    [262] = (syscall_t) sys_unlinkat,          // unlinkat
+    [263] = (syscall_t) sys_renameat,          // renameat
+    [264] = (syscall_t) sys_linkat,            // linkat
+    [265] = (syscall_t) sys_symlinkat,         // symlinkat
+    [266] = (syscall_t) sys_readlinkat,        // readlinkat
+    [267] = (syscall_t) sys_fchmodat,          // fchmodat
+    [268] = (syscall_t) sys_faccessat,         // faccessat
+    [269] = (syscall_t) sys_pselect,           // pselect6
+    [270] = (syscall_t) sys_ppoll,             // ppoll
+    [271] = (syscall_t) syscall_stub,          // unshare
+    [272] = (syscall_t) sys_set_thread_area,   // set_robust_list (mapped to set_thread_area for now)
+    [281] = (syscall_t) sys_epoll_create0,     // epoll_create1
+    [282] = (syscall_t) sys_dup3,              // dup3
+    [283] = (syscall_t) sys_pipe2,             // pipe2
+    [285] = (syscall_t) sys_eventfd2,          // eventfd2
+    [286] = (syscall_t) sys_epoll_pwait,       // epoll_pwait
+    [291] = (syscall_t) sys_epoll_create0,     // epoll_create1 (dup)
+    [319] = (syscall_t) sys_getrandom,         // getrandom
+    [332] = (syscall_t) sys_statx,             // statx
+};
+
+#define NUM_SYSCALLS_64 (sizeof(syscall_table_64) / sizeof(syscall_table_64[0]))
+
 void dump_stack(int lines);
 
 void handle_interrupt(int interrupt) {
@@ -271,6 +410,30 @@ void handle_interrupt(int interrupt) {
             int result = syscall_table[syscall_num](cpu->ebx, cpu->ecx, cpu->edx, cpu->esi, cpu->edi, cpu->ebp);
             STRACE(" = 0x%x\n", result);
             cpu->eax = result;
+        }
+    } else if (interrupt == INT_SYSCALL64) {
+        // 64-bit syscall handler
+        // x86-64 calling convention: rax=syscall#, rdi,rsi,rdx,r10,r8,r9=args, rax=return
+        unsigned syscall_num = (unsigned) cpu->regs[0]; // RAX
+        if (syscall_num >= NUM_SYSCALLS_64 || syscall_table_64[syscall_num] == NULL) {
+            printk("%d(%s) missing 64-bit syscall %d\n", current->pid, current->comm, syscall_num);
+            cpu->regs[0] = _ENOSYS; // Return in RAX
+        } else {
+            if (syscall_table_64[syscall_num] == (syscall_t) syscall_stub) {
+                printk("%d(%s) stub 64-bit syscall %d\n", current->pid, current->comm, syscall_num);
+            }
+            STRACE("%d call64 %-3d ", current->pid, syscall_num);
+            // Arguments: RDI, RSI, RDX, R10, R8, R9
+            int result = syscall_table_64[syscall_num](
+                (dword_t) cpu->regs[7],  // RDI
+                (dword_t) cpu->regs[6],  // RSI
+                (dword_t) cpu->regs[2],  // RDX
+                (dword_t) cpu->regs[10], // R10
+                (dword_t) cpu->regs[8],  // R8
+                (dword_t) cpu->regs[9]   // R9
+            );
+            STRACE(" = 0x%x\n", result);
+            cpu->regs[0] = result; // Return in RAX
         }
     } else if (interrupt == INT_GPF) {
         // some page faults, such as stack growing or CoW clones, are handled by mem_ptr
