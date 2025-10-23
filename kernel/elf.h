@@ -14,6 +14,55 @@
 #define ELF_X86 3
 #define ELF_X86_64 62  // x86-64 machine type
 
+// ELF32 header (32-bit addresses and offsets)
+struct elf32_header {
+    uint32_t magic;
+    byte_t bitness;
+    byte_t endian;
+    byte_t elfversion1;
+    byte_t abi;
+    byte_t abi_version;
+    byte_t padding[7];
+    uint16_t type;
+    uint16_t machine;
+    uint32_t elfversion2;
+    dword_t entry_point;     // 32-bit entry point
+    dword_t prghead_off;     // 32-bit program header offset
+    dword_t secthead_off;    // 32-bit section header offset
+    uint32_t flags;
+    uint16_t header_size;
+    uint16_t phent_size;
+    uint16_t phent_count;
+    uint16_t shent_size;
+    uint16_t shent_count;
+    uint16_t sectname_index;
+};
+
+// ELF64 header (64-bit addresses and offsets)
+struct elf64_header {
+    uint32_t magic;
+    byte_t bitness;
+    byte_t endian;
+    byte_t elfversion1;
+    byte_t abi;
+    byte_t abi_version;
+    byte_t padding[7];
+    uint16_t type;
+    uint16_t machine;
+    uint32_t elfversion2;
+    qword_t entry_point;     // 64-bit entry point
+    qword_t prghead_off;     // 64-bit program header offset
+    qword_t secthead_off;    // 64-bit section header offset
+    uint32_t flags;
+    uint16_t header_size;
+    uint16_t phent_size;
+    uint16_t phent_count;
+    uint16_t shent_size;
+    uint16_t shent_count;
+    uint16_t sectname_index;
+};
+
+// Generic header structure for code that needs to work with both
 struct elf_header {
     uint32_t magic;
     byte_t bitness;
@@ -22,12 +71,12 @@ struct elf_header {
     byte_t abi;
     byte_t abi_version;
     byte_t padding[7];
-    uint16_t type; // library or executable or what
+    uint16_t type;
     uint16_t machine;
     uint32_t elfversion2;
-    qword_t entry_point;     // 64-bit entry point
-    qword_t prghead_off;     // 64-bit program header offset
-    qword_t secthead_off;    // 64-bit section header offset
+    qword_t entry_point;     // Always use 64-bit for uniform access
+    qword_t prghead_off;     // Always use 64-bit for uniform access
+    qword_t secthead_off;    // Always use 64-bit for uniform access
     uint32_t flags;
     uint16_t header_size;
     uint16_t phent_size;
@@ -47,7 +96,20 @@ struct elf_header {
 #define PT_TLS 7
 #define PT_NUM 8
 
-struct prg_header {
+// ELF32 program header
+struct prg32_header {
+    uint32_t type;
+    dword_t offset;          // 32-bit file offset
+    dword_t vaddr;           // 32-bit virtual address
+    dword_t paddr;           // 32-bit physical address
+    dword_t filesize;        // 32-bit file size
+    dword_t memsize;         // 32-bit memory size
+    uint32_t flags;
+    dword_t alignment;       // 32-bit alignment
+};
+
+// ELF64 program header
+struct prg64_header {
     uint32_t type;
     uint32_t flags;          // In ELF64, flags come before offsets
     qword_t offset;          // 64-bit file offset
@@ -55,7 +117,19 @@ struct prg_header {
     qword_t paddr;           // 64-bit physical address
     qword_t filesize;        // 64-bit file size
     qword_t memsize;         // 64-bit memory size
-    qword_t alignment;       // 64-bit alignment (must be power of 2)
+    qword_t alignment;       // 64-bit alignment
+};
+
+// Generic program header for code that needs to work with both
+struct prg_header {
+    uint32_t type;
+    uint32_t flags;
+    qword_t offset;          // Always use 64-bit for uniform access
+    qword_t vaddr;           // Always use 64-bit for uniform access
+    qword_t paddr;           // Always use 64-bit for uniform access
+    qword_t filesize;        // Always use 64-bit for uniform access
+    qword_t memsize;         // Always use 64-bit for uniform access
+    qword_t alignment;       // Always use 64-bit for uniform access
 };
 
 #define PH_R (1 << 2)

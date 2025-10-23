@@ -38,24 +38,102 @@ static int read_header(struct fd *fd, struct elf_header *header) {
     int err;
     if (fd->ops->lseek(fd, 0, SEEK_SET))
         return _EIO;
-    if ((err = fd->ops->read(fd, header, sizeof(*header))) != sizeof(*header)) {
+
+    // First, read just the e_ident to determine bitness (16 bytes)
+    byte_t e_ident[16];
+    if ((err = fd->ops->read(fd, e_ident, 16)) != 16) {
         if (err < 0)
             return _EIO;
         return _ENOEXEC;
     }
-    if (memcmp(&header->magic, ELF_MAGIC, sizeof(header->magic)) != 0
-            || (header->type != ELF_EXECUTABLE && header->type != ELF_DYNAMIC)
-            || (header->bitness != ELF_32BIT && header->bitness != ELF_64BIT)
-            || header->endian != ELF_LITTLEENDIAN
-            || header->elfversion1 != 1
-            || (header->machine != ELF_X86 && header->machine != ELF_X86_64))
+
+    // Check magic and bitness
+    if (memcmp(e_ident, ELF_MAGIC, 4) != 0)
         return _ENOEXEC;
+
+    byte_t bitness = e_ident[4];
+    if (bitness != ELF_32BIT && bitness != ELF_64BIT)
+        return _ENOEXEC;
+
+    // Seek back to start
+    if (fd->ops->lseek(fd, 0, SEEK_SET))
+        return _EIO;
+
+    // Read the appropriate header based on bitness
+    if (bitness == ELF_32BIT) {
+        struct elf32_header hdr32;
+        if ((err = fd->ops->read(fd, &hdr32, sizeof(hdr32))) != sizeof(hdr32)) {
+            if (err < 0)
+                return _EIO;
+            return _ENOEXEC;
+        }
+
+        // Validate 32-bit header
+        if ((hdr32.type != ELF_EXECUTABLE && hdr32.type != ELF_DYNAMIC)
+                || hdr32.endian != ELF_LITTLEENDIAN
+                || hdr32.elfversion1 != 1
+                || hdr32.machine != ELF_X86)
+            return _ENOEXEC;
+
+        // Copy to generic header structure, extending 32-bit values to 64-bit
+        header->magic = hdr32.magic;
+        header->bitness = hdr32.bitness;
+        header->endian = hdr32.endian;
+        header->elfversion1 = hdr32.elfversion1;
+        header->type = hdr32.type;
+        header->machine = hdr32.machine;
+        header->elfversion2 = hdr32.elfversion2;
+        header->entry_point = hdr32.entry_point;  // Extend to 64-bit
+        header->prghead_off = hdr32.prghead_off;  // Extend to 64-bit
+        header->secthead_off = hdr32.secthead_off; // Extend to 64-bit
+        header->flags = hdr32.flags;
+        header->header_size = hdr32.header_size;
+        header->phent_size = hdr32.phent_size;
+        header->phent_count = hdr32.phent_count;
+        header->shent_size = hdr32.shent_size;
+        header->shent_count = hdr32.shent_count;
+        header->sectname_index = hdr32.sectname_index;
+    } else {
+        struct elf64_header hdr64;
+        if ((err = fd->ops->read(fd, &hdr64, sizeof(hdr64))) != sizeof(hdr64)) {
+            if (err < 0)
+                return _EIO;
+            return _ENOEXEC;
+        }
+
+        // Validate 64-bit header
+        if ((hdr64.type != ELF_EXECUTABLE && hdr64.type != ELF_DYNAMIC)
+                || hdr64.endian != ELF_LITTLEENDIAN
+                || hdr64.elfversion1 != 1
+                || hdr64.machine != ELF_X86_64)
+            return _ENOEXEC;
+
+        // Copy to generic header structure
+        header->magic = hdr64.magic;
+        header->bitness = hdr64.bitness;
+        header->endian = hdr64.endian;
+        header->elfversion1 = hdr64.elfversion1;
+        header->type = hdr64.type;
+        header->machine = hdr64.machine;
+        header->elfversion2 = hdr64.elfversion2;
+        header->entry_point = hdr64.entry_point;
+        header->prghead_off = hdr64.prghead_off;
+        header->secthead_off = hdr64.secthead_off;
+        header->flags = hdr64.flags;
+        header->header_size = hdr64.header_size;
+        header->phent_size = hdr64.phent_size;
+        header->phent_count = hdr64.phent_count;
+        header->shent_size = hdr64.shent_size;
+        header->shent_count = hdr64.shent_count;
+        header->sectname_index = hdr64.sectname_index;
+    }
+
     return 0;
 }
 
 static int read_prg_headers(struct fd *fd, struct elf_header header, struct prg_header **ph_out) {
-    ssize_t ph_size = sizeof(struct prg_header) * header.phent_count;
-    struct prg_header *ph = malloc(ph_size);
+    // Allocate output buffer for generic program headers
+    struct prg_header *ph = malloc(sizeof(struct prg_header) * header.phent_count);
     if (ph == NULL)
         return _ENOMEM;
 
@@ -63,11 +141,50 @@ static int read_prg_headers(struct fd *fd, struct elf_header header, struct prg_
         free(ph);
         return _EIO;
     }
-    if (fd->ops->read(fd, ph, ph_size) != ph_size) {
-        free(ph);
-        if (errno != 0)
-            return _EIO;
-        return _ENOEXEC;
+
+    // Read based on bitness
+    if (header.bitness == ELF_32BIT) {
+        // Read 32-bit program headers and convert to generic format
+        for (int i = 0; i < header.phent_count; i++) {
+            struct prg32_header ph32;
+            if (fd->ops->read(fd, &ph32, sizeof(ph32)) != sizeof(ph32)) {
+                free(ph);
+                if (errno != 0)
+                    return _EIO;
+                return _ENOEXEC;
+            }
+
+            // Convert 32-bit to generic format (extend to 64-bit)
+            ph[i].type = ph32.type;
+            ph[i].flags = ph32.flags;
+            ph[i].offset = ph32.offset;
+            ph[i].vaddr = ph32.vaddr;
+            ph[i].paddr = ph32.paddr;
+            ph[i].filesize = ph32.filesize;
+            ph[i].memsize = ph32.memsize;
+            ph[i].alignment = ph32.alignment;
+        }
+    } else {
+        // Read 64-bit program headers
+        for (int i = 0; i < header.phent_count; i++) {
+            struct prg64_header ph64;
+            if (fd->ops->read(fd, &ph64, sizeof(ph64)) != sizeof(ph64)) {
+                free(ph);
+                if (errno != 0)
+                    return _EIO;
+                return _ENOEXEC;
+            }
+
+            // Copy 64-bit to generic format
+            ph[i].type = ph64.type;
+            ph[i].flags = ph64.flags;
+            ph[i].offset = ph64.offset;
+            ph[i].vaddr = ph64.vaddr;
+            ph[i].paddr = ph64.paddr;
+            ph[i].filesize = ph64.filesize;
+            ph[i].memsize = ph64.memsize;
+            ph[i].alignment = ph64.alignment;
+        }
     }
 
     *ph_out = ph;
