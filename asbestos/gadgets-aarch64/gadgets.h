@@ -103,8 +103,6 @@ back_write_done_\id :
             \macro \args, \size, h
         .elseif \size == 32
             \macro \args, \size,
-        .elseif \size == 64
-            \macro \args, \size,
         .else
             .error "bad size"
         .endif
@@ -114,8 +112,6 @@ back_write_done_\id :
         .elseif \size == 16
             \macro \size, h
         .elseif \size == 32
-            \macro \size,
-        .elseif \size == 64
             \macro \size,
         .else
             .error "bad size"

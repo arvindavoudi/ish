@@ -1,5 +1,9 @@
 #include "../gadgets-generic.h"
 
+# x86_64 hosts support 64-bit x86-64 operations
+#undef SIZE_LIST
+#define SIZE_LIST 8,16,32,64
+
 # register assignments
 #define _esp r8d
 #define _sp r8w
