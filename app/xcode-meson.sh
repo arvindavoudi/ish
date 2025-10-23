@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Add Homebrew paths for Apple Silicon and Intel Macs
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 # Try to figure out the user's PATH to pick up their installed utilities.
-export PATH="$PATH:$(sudo -u "$USER" -i printenv PATH)"
+export PATH="$PATH:$(sudo -u "$USER" -i printenv PATH 2>/dev/null || echo '')"
 
 mkdir -p "$MESON_BUILD_DIR"
 cd "$MESON_BUILD_DIR"
