@@ -205,7 +205,7 @@ struct cpu_state {
 #define edi edi
 #define esp esp
 #define ebp ebp
-#define eip rip  // Map eip to rip for compatibility
+// Note: eip is already a union member, no macro needed
 
 #define CPU_OFFSET(field) offsetof(struct cpu_state, field)
 
