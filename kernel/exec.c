@@ -45,10 +45,10 @@ static int read_header(struct fd *fd, struct elf_header *header) {
     }
     if (memcmp(&header->magic, ELF_MAGIC, sizeof(header->magic)) != 0
             || (header->type != ELF_EXECUTABLE && header->type != ELF_DYNAMIC)
-            || header->bitness != ELF_32BIT
+            || (header->bitness != ELF_32BIT && header->bitness != ELF_64BIT)
             || header->endian != ELF_LITTLEENDIAN
             || header->elfversion1 != 1
-            || header->machine != ELF_X86)
+            || (header->machine != ELF_X86 && header->machine != ELF_X86_64))
         return _ENOEXEC;
     return 0;
 }
