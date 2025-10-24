@@ -21,7 +21,8 @@ static void mem_changed(struct mem *mem);
 static struct mmu_ops mem_mmu_ops;
 
 void mem_init(struct mem *mem) {
-    mem->pgdir = calloc(MEM_PGDIR_TOP_SIZE, sizeof(struct pt_entry *));
+    // Allocate level 1 page directory (65K entries, 512KB)
+    mem->pgdir = calloc(MEM_PGDIR_L1_SIZE, sizeof(void **));
     mem->pgdir_used = 0;
     mem->mmu.ops = &mem_mmu_ops;
     mem->mmu.asbestos = asbestos_new(&mem->mmu);
@@ -33,34 +34,78 @@ void mem_destroy(struct mem *mem) {
     write_wrlock(&mem->lock);
     pt_unmap_always(mem, 0, MEM_PAGES);
     asbestos_free(mem->mmu.asbestos);
-    for (size_t i = 0; i < MEM_PGDIR_TOP_SIZE; i++) {
-        if (mem->pgdir[i] != NULL)
-            free(mem->pgdir[i]);
+
+    // Free all 3 levels of page directory
+    for (size_t i = 0; i < MEM_PGDIR_L1_SIZE; i++) {
+        if (mem->pgdir[i] != NULL) {
+            void **l2_dir = (void **)mem->pgdir[i];
+            for (size_t j = 0; j < MEM_PGDIR_L2_SIZE; j++) {
+                if (l2_dir[j] != NULL) {
+                    free(l2_dir[j]);  // Free L3 (pt_entry array)
+                }
+            }
+            free(l2_dir);  // Free L2
+        }
     }
-    free(mem->pgdir);
+    free(mem->pgdir);  // Free L1
+
     write_wrunlock(&mem->lock);
     wrlock_destroy(&mem->lock);
 }
 
-#define PGDIR_TOP(page) ((page) >> 10)
-#define PGDIR_BOTTOM(page) ((page) & (MEM_PGDIR_SIZE - 1))
+// 3-level page directory indexing
+// Page number (36 bits): [L1: 16 bits][L2: 10 bits][L3: 10 bits]
+#define PGDIR_L1(page) ((page) >> (MEM_PGDIR_L2_BITS + MEM_PGDIR_L3_BITS))
+#define PGDIR_L2(page) (((page) >> MEM_PGDIR_L3_BITS) & (MEM_PGDIR_L2_SIZE - 1))
+#define PGDIR_L3(page) ((page) & (MEM_PGDIR_L3_SIZE - 1))
+
+// Backwards compatibility (for old 2-level code)
+#define PGDIR_TOP(page) PGDIR_L1(page)
+#define PGDIR_BOTTOM(page) PGDIR_L3(page)
 
 static struct pt_entry *mem_pt_new(struct mem *mem, page_t page) {
-    struct pt_entry *pgdir = mem->pgdir[PGDIR_TOP(page)];
-    if (pgdir == NULL) {
-        pgdir = mem->pgdir[PGDIR_TOP(page)] = calloc(MEM_PGDIR_SIZE, sizeof(struct pt_entry));
+    size_t l1_idx = PGDIR_L1(page);
+    size_t l2_idx = PGDIR_L2(page);
+    size_t l3_idx = PGDIR_L3(page);
+
+    // Allocate L2 if needed
+    void **l2_dir = (void **)mem->pgdir[l1_idx];
+    if (l2_dir == NULL) {
+        l2_dir = (void **)calloc(MEM_PGDIR_L2_SIZE, sizeof(void *));
+        mem->pgdir[l1_idx] = l2_dir;
+    }
+
+    // Allocate L3 if needed
+    struct pt_entry *l3_dir = (struct pt_entry *)l2_dir[l2_idx];
+    if (l3_dir == NULL) {
+        l3_dir = (struct pt_entry *)calloc(MEM_PGDIR_L3_SIZE, sizeof(struct pt_entry));
+        l2_dir[l2_idx] = l3_dir;
         mem->pgdir_used++;
     }
-    return &pgdir[PGDIR_BOTTOM(page)];
+
+    return &l3_dir[l3_idx];
 }
 
 struct pt_entry *mem_pt(struct mem *mem, page_t page) {
-    struct pt_entry *pgdir = mem->pgdir[PGDIR_TOP(page)];
-    if (pgdir == NULL)
+    size_t l1_idx = PGDIR_L1(page);
+    size_t l2_idx = PGDIR_L2(page);
+    size_t l3_idx = PGDIR_L3(page);
+
+    // Traverse L1
+    void **l2_dir = (void **)mem->pgdir[l1_idx];
+    if (l2_dir == NULL)
         return NULL;
-    struct pt_entry *entry = &pgdir[PGDIR_BOTTOM(page)];
+
+    // Traverse L2
+    struct pt_entry *l3_dir = (struct pt_entry *)l2_dir[l2_idx];
+    if (l3_dir == NULL)
+        return NULL;
+
+    // Get entry from L3
+    struct pt_entry *entry = &l3_dir[l3_idx];
     if (entry->data == NULL)
         return NULL;
+
     return entry;
 }
 
@@ -74,8 +119,32 @@ void mem_next_page(struct mem *mem, page_t *page) {
     (*page)++;
     if (*page >= MEM_PAGES)
         return;
-    while (*page < MEM_PAGES && mem->pgdir[PGDIR_TOP(*page)] == NULL)
-        *page = (*page - PGDIR_BOTTOM(*page)) + MEM_PGDIR_SIZE;
+
+    // Skip unallocated L2 and L3 directories
+    while (*page < MEM_PAGES) {
+        size_t l1_idx = PGDIR_L1(*page);
+        size_t l2_idx = PGDIR_L2(*page);
+        size_t l3_idx = PGDIR_L3(*page);
+
+        // If L2 doesn't exist, skip to next L2
+        void **l2_dir = (void **)mem->pgdir[l1_idx];
+        if (l2_dir == NULL) {
+            // Skip to next L1 entry
+            *page = (*page - (l2_idx << MEM_PGDIR_L3_BITS) - l3_idx) + (1ULL << (MEM_PGDIR_L2_BITS + MEM_PGDIR_L3_BITS));
+            continue;
+        }
+
+        // If L3 doesn't exist, skip to next L3
+        struct pt_entry *l3_dir = (struct pt_entry *)l2_dir[l2_idx];
+        if (l3_dir == NULL) {
+            // Skip to next L2 entry
+            *page = (*page - l3_idx) + MEM_PGDIR_L3_SIZE;
+            continue;
+        }
+
+        // L3 exists, so we can proceed
+        break;
+    }
 }
 
 page_t pt_find_hole(struct mem *mem, pages_t size) {

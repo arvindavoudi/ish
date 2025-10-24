@@ -10,7 +10,7 @@
 #include "misc.h"
 
 struct mem {
-    struct pt_entry **pgdir;
+    void ***pgdir;  // Now 3-level: L1 -> L2 -> L3 (pt_entry)
     int pgdir_used;
 
     struct mmu mmu;
@@ -18,14 +18,19 @@ struct mem {
     wrlock_t lock;
 };
 
-// Page directory structure for 64-bit support
+// 3-level page directory structure for 64-bit support
 // To support 36-bit page numbers (256TB address space), we use:
-// - 26 bits for top-level directory (supports full range)
-// - 10 bits for bottom-level directory
-// Top level is allocated sparsely (only non-NULL entries consume memory)
-#define MEM_PGDIR_TOP_SIZE (1ULL << 26)    // 67M entries for top level
-#define MEM_PGDIR_BOTTOM_SIZE (1 << 10)     // 1024 entries for bottom level
-#define MEM_PGDIR_SIZE MEM_PGDIR_BOTTOM_SIZE  // For backwards compatibility
+// - Level 1: 16 bits (65K entries) - always allocated, 512KB
+// - Level 2: 10 bits (1K entries) - sparsely allocated, 8KB each
+// - Level 3: 10 bits (1K entries) - sparsely allocated, contains pt_entry
+// Total: 16 + 10 + 10 = 36 bits
+#define MEM_PGDIR_L1_BITS 16
+#define MEM_PGDIR_L2_BITS 10
+#define MEM_PGDIR_L3_BITS 10
+#define MEM_PGDIR_L1_SIZE (1ULL << MEM_PGDIR_L1_BITS)  // 65,536 entries
+#define MEM_PGDIR_L2_SIZE (1 << MEM_PGDIR_L2_BITS)      // 1,024 entries
+#define MEM_PGDIR_L3_SIZE (1 << MEM_PGDIR_L3_BITS)      // 1,024 entries
+#define MEM_PGDIR_SIZE MEM_PGDIR_L3_SIZE  // For backwards compatibility
 
 // Initialize the address space
 void mem_init(struct mem *mem);
