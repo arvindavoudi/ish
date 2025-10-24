@@ -9,6 +9,7 @@ struct mm {
     atomic_uint refcount;
     struct mem mem;
 
+    byte_t bitness; // ELF_32BIT or ELF_64BIT - immutable after exec
     addr_t vdso; // immutable
     addr_t start_brk; // immutable
     addr_t brk;

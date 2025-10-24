@@ -12,6 +12,7 @@ struct mm *mm_new() {
     if (mm == NULL)
         return NULL;
     mem_init(&mm->mem);
+    mm->bitness = 0; // will be set during exec
     mm->start_brk = mm->brk = 0; // should get overwritten by exec
     mm->exefile = NULL;
     mm->refcount = 1;

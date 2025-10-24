@@ -546,6 +546,9 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
 
     current->mm->stack_start = sp;
 
+    // Store the bitness so memory access code can mask addresses appropriately
+    current->mm->bitness = header.bitness;
+
     // For 32-bit binaries, we must zero all 64-bit registers to prevent garbage
     // in the upper 32 bits from causing invalid memory accesses
     if (header.bitness == ELF_32BIT) {

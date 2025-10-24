@@ -11,6 +11,8 @@
 #include "kernel/errno.h"
 #include "kernel/signal.h"
 #include "kernel/memory.h"
+#include "kernel/mm.h"
+#include "kernel/elf.h"
 #include "asbestos/asbestos.h"
 #include "kernel/vdso.h"
 #include "kernel/task.h"
@@ -293,6 +295,23 @@ static void mem_changed(struct mem *mem) {
 // This version will return NULL instead of making necessary pagetable changes.
 // Used by the emulator to avoid deadlocks.
 static void *mem_ptr_nofault(struct mem *mem, addr_t addr, int type) {
+    // For 32-bit processes, mask addresses to 32 bits to prevent invalid 64-bit addresses
+    // This is critical because x86 registers in the emulator are 64-bit, but 32-bit
+    // code should only access the lower 4GB of address space.
+    struct mm *mm = container_of(mem, struct mm, mem);
+    if (mm->bitness == ELF_32BIT) {
+        addr_t original_addr = addr;
+        addr = addr & 0xFFFFFFFF;  // Mask to 32 bits
+        if (original_addr != addr) {
+            static int warned = 0;
+            if (!warned) {
+                printk("mem_ptr_nofault: 32-bit process accessing 64-bit address 0x%llx, masked to 0x%llx\n",
+                       (unsigned long long)original_addr, (unsigned long long)addr);
+                warned = 1;
+            }
+        }
+    }
+
     page_t page = PAGE(addr);
 
     // Validate page number is within supported range
