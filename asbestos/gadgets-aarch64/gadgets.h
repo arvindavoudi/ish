@@ -5,14 +5,19 @@
 eax .req w20
 xax .req x20
 ebx .req w21
+xbx .req x21
 ecx .req w22
 xcx .req x22
 edx .req w23
 xdx .req x23
 esi .req w24
+xsi .req x24
 edi .req w25
+xdi .req x25
 ebp .req w26
+xbp .req x26
 esp .req w27
+xsp .req x27
 _ip .req x28
 eip .req w28
 _tmp .req w0
@@ -219,15 +224,19 @@ back_write_done_\id :
 .endm
 
 .macro save_regs
-    str eax, [_cpu, CPU_eax]
-    str ebx, [_cpu, CPU_ebx]
-    str ecx, [_cpu, CPU_ecx]
-    str edx, [_cpu, CPU_edx]
-    str edi, [_cpu, CPU_edi]
-    str esi, [_cpu, CPU_esi]
-    str ebp, [_cpu, CPU_ebp]
-    str esp, [_cpu, CPU_esp]
-    str eip, [_cpu, CPU_eip]
+    # Use 64-bit stores to clear upper 32 bits for 32-bit x86 registers
+    # ARM64 automatically zero-extends W registers to X registers, so storing
+    # the X version writes 64 bits with upper 32 bits = 0
+    str xax, [_cpu, CPU_eax]
+    str xbx, [_cpu, CPU_ebx]
+    str xcx, [_cpu, CPU_ecx]
+    str xdx, [_cpu, CPU_edx]
+    str xdi, [_cpu, CPU_edi]
+    str xsi, [_cpu, CPU_esi]
+    str xbp, [_cpu, CPU_ebp]
+    str xsp, [_cpu, CPU_esp]
+    # eip is w28, _ip is x28 (64-bit). ARM64 zero-extends when writing W regs
+    str _ip, [_cpu, CPU_eip]
 .endm
 
 # vim: ft=gas
