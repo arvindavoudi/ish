@@ -136,9 +136,22 @@ struct prg_header {
 #define PH_W (1 << 1)
 #define PH_X (1 << 0)
 
+// ELF32 auxiliary vector entry
+struct aux32_ent {
+    dword_t type;
+    dword_t value;
+};
+
+// ELF64 auxiliary vector entry
+struct aux64_ent {
+    qword_t type;
+    qword_t value;
+};
+
+// Generic auxiliary vector entry (for internal use)
 struct aux_ent {
-    qword_t type;   // 64-bit auxiliary vector type
-    qword_t value;  // 64-bit auxiliary vector value
+    qword_t type;   // Always use 64-bit internally
+    qword_t value;  // Always use 64-bit internally
 };
 
 #define AX_PHDR 3

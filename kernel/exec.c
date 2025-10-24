@@ -441,6 +441,10 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     // calculate how much space is needed for argv, envp, and auxv, subtract
     // that from sp, then align, then copy argv/envp/auxv from that down
 
+    // Determine pointer size and aux entry size based on binary bitness
+    size_t ptr_size = (header.bitness == ELF_64BIT) ? sizeof(qword_t) : sizeof(dword_t);
+    size_t aux_entry_size = (header.bitness == ELF_64BIT) ? sizeof(struct aux64_ent) : sizeof(struct aux32_ent);
+
     // declare elf aux now so we can know how big it is
     struct aux_ent aux[] = {
         {AX_SYSINFO, vdso_entry},
@@ -449,7 +453,7 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
         {AX_PAGESZ, PAGE_SIZE},
         {AX_CLKTCK, 0x64},
         {AX_PHDR, load_addr + header.prghead_off},
-        {AX_PHENT, sizeof(struct prg_header)},
+        {AX_PHENT, header.phent_size},  // Use actual header size, not sizeof
         {AX_PHNUM, header.phent_count},
         {AX_BASE, interp_base},
         {AX_FLAGS, 0},
@@ -465,48 +469,84 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
         {AX_PLATFORM, platform_addr},
         {0, 0}
     };
-    sp -= ((argv.count + 1) + (envp.count + 1) + 1) * sizeof(dword_t);
-    sp -= sizeof(aux);
+    size_t aux_count = sizeof(aux) / sizeof(aux[0]);
+    sp -= ((argv.count + 1) + (envp.count + 1) + 1) * ptr_size;
+    sp -= aux_count * aux_entry_size;  // Use correct aux entry size for bitness
     sp &=~ 0xf;
 
     // now copy down, start using p so sp is preserved
     addr_t p = sp;
 
     // argc
-    if (user_put(p, argv.count))
-        return _EFAULT;
-    p += sizeof(dword_t);
+    if (header.bitness == ELF_64BIT) {
+        if (user_put(p, (qword_t)argv.count))
+            return _EFAULT;
+    } else {
+        if (user_put(p, (dword_t)argv.count))
+            return _EFAULT;
+    }
+    p += ptr_size;
 
     // argv
     size_t argc = argv.count;
     while (argc-- > 0) {
-        if (user_put(p, argv_addr))
-            return _EFAULT;
+        if (header.bitness == ELF_64BIT) {
+            if (user_put(p, (qword_t)argv_addr))
+                return _EFAULT;
+        } else {
+            if (user_put(p, (dword_t)argv_addr))
+                return _EFAULT;
+        }
         argv_addr += user_strlen(argv_addr) + 1;
-        p += sizeof(dword_t); // null terminator
+        p += ptr_size;
     }
-    p += sizeof(dword_t); // null terminator
+    p += ptr_size; // null terminator
 
     // envp
     size_t envc = envp.count;
     while (envc-- > 0) {
-        if (user_put(p, envp_addr))
-            return _EFAULT;
+        if (header.bitness == ELF_64BIT) {
+            if (user_put(p, (qword_t)envp_addr))
+                return _EFAULT;
+        } else {
+            if (user_put(p, (dword_t)envp_addr))
+                return _EFAULT;
+        }
         envp_addr += user_strlen(envp_addr) + 1;
-        p += sizeof(dword_t);
+        p += ptr_size;
     }
-    p += sizeof(dword_t); // null terminator
+    p += ptr_size; // null terminator
 
-    // copy auxv
+    // copy auxv - write in the correct format based on bitness
     current->mm->auxv_start = p;
-    if (user_put(p, aux))
-        goto beyond_hope;
-    p += sizeof(aux);
+    if (header.bitness == ELF_64BIT) {
+        // Write 64-bit aux entries
+        for (size_t i = 0; i < aux_count; i++) {
+            struct aux64_ent aux64 = {aux[i].type, aux[i].value};
+            if (user_put(p, aux64))
+                goto beyond_hope;
+            p += sizeof(struct aux64_ent);
+        }
+    } else {
+        // Write 32-bit aux entries
+        for (size_t i = 0; i < aux_count; i++) {
+            struct aux32_ent aux32 = {aux[i].type, aux[i].value};
+            if (user_put(p, aux32))
+                goto beyond_hope;
+            p += sizeof(struct aux32_ent);
+        }
+    }
     current->mm->auxv_end = p;
 
     current->mm->stack_start = sp;
-    current->cpu.esp = sp;
-    current->cpu.eip = entry;
+    // Set stack and instruction pointers based on bitness
+    if (header.bitness == ELF_64BIT) {
+        current->cpu.rsp = sp;
+        current->cpu.rip = entry;
+    } else {
+        current->cpu.esp = sp;
+        current->cpu.eip = entry;
+    }
     current->cpu.fcw = 0x37f;
 
     // This code was written when I discovered that the glibc entry point
