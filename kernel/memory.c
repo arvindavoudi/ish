@@ -21,7 +21,7 @@ static void mem_changed(struct mem *mem);
 static struct mmu_ops mem_mmu_ops;
 
 void mem_init(struct mem *mem) {
-    mem->pgdir = calloc(MEM_PGDIR_SIZE, sizeof(struct pt_entry *));
+    mem->pgdir = calloc(MEM_PGDIR_TOP_SIZE, sizeof(struct pt_entry *));
     mem->pgdir_used = 0;
     mem->mmu.ops = &mem_mmu_ops;
     mem->mmu.asbestos = asbestos_new(&mem->mmu);
@@ -33,7 +33,7 @@ void mem_destroy(struct mem *mem) {
     write_wrlock(&mem->lock);
     pt_unmap_always(mem, 0, MEM_PAGES);
     asbestos_free(mem->mmu.asbestos);
-    for (int i = 0; i < MEM_PGDIR_SIZE; i++) {
+    for (size_t i = 0; i < MEM_PGDIR_TOP_SIZE; i++) {
         if (mem->pgdir[i] != NULL)
             free(mem->pgdir[i]);
     }

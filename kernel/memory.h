@@ -17,7 +17,15 @@ struct mem {
 
     wrlock_t lock;
 };
-#define MEM_PGDIR_SIZE (1 << 10)
+
+// Page directory structure for 64-bit support
+// To support 36-bit page numbers (256TB address space), we use:
+// - 26 bits for top-level directory (supports full range)
+// - 10 bits for bottom-level directory
+// Top level is allocated sparsely (only non-NULL entries consume memory)
+#define MEM_PGDIR_TOP_SIZE (1ULL << 26)    // 67M entries for top level
+#define MEM_PGDIR_BOTTOM_SIZE (1 << 10)     // 1024 entries for bottom level
+#define MEM_PGDIR_SIZE MEM_PGDIR_BOTTOM_SIZE  // For backwards compatibility
 
 // Initialize the address space
 void mem_init(struct mem *mem);
