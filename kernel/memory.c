@@ -293,7 +293,20 @@ static void mem_changed(struct mem *mem) {
 // This version will return NULL instead of making necessary pagetable changes.
 // Used by the emulator to avoid deadlocks.
 static void *mem_ptr_nofault(struct mem *mem, addr_t addr, int type) {
-    struct pt_entry *entry = mem_pt(mem, PAGE(addr));
+    page_t page = PAGE(addr);
+
+    // Validate page number is within supported range
+    if (page >= MEM_PAGES) {
+        static int warned = 0;
+        if (!warned) {
+            printk("mem_ptr_nofault: INVALID ADDRESS - page 0x%llx (addr=0x%llx) exceeds MEM_PAGES 0x%llx\n",
+                   (unsigned long long)page, (unsigned long long)addr, (unsigned long long)MEM_PAGES);
+            warned = 1;
+        }
+        return NULL;
+    }
+
+    struct pt_entry *entry = mem_pt(mem, page);
     if (entry == NULL)
         return NULL;
     if (type == MEM_WRITE && !P_WRITABLE(entry->flags))

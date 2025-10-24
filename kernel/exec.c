@@ -549,12 +549,14 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     // For 32-bit binaries, we must zero all 64-bit registers to prevent garbage
     // in the upper 32 bits from causing invalid memory accesses
     if (header.bitness == ELF_32BIT) {
+        printk("********** CLEARING ALL REGISTERS FOR 32-BIT BINARY **********\n");
         // Clear all general purpose registers
         for (int i = 0; i < 16; i++) {
             current->cpu.regs[i] = 0;
         }
         current->cpu.rip = 0;
         current->cpu.rflags = 0;
+        printk("********** REGISTERS CLEARED **********\n");
     }
 
     // Set stack and instruction pointers based on bitness
