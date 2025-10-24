@@ -545,13 +545,30 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     current->mm->auxv_end = p;
 
     current->mm->stack_start = sp;
+
+    // For 32-bit binaries, we must zero all 64-bit registers to prevent garbage
+    // in the upper 32 bits from causing invalid memory accesses
+    if (header.bitness == ELF_32BIT) {
+        // Clear all general purpose registers
+        for (int i = 0; i < 16; i++) {
+            current->cpu.regs[i] = 0;
+        }
+        current->cpu.rip = 0;
+        current->cpu.rflags = 0;
+    }
+
     // Set stack and instruction pointers based on bitness
     if (header.bitness == ELF_64BIT) {
+        printk("exec: Loading 64-bit binary, entry=0x%llx, sp=0x%llx\n",
+               (unsigned long long)entry, (unsigned long long)sp);
         current->cpu.rsp = sp;
         current->cpu.rip = entry;
     } else {
-        current->cpu.esp = sp;
-        current->cpu.eip = entry;
+        printk("exec: Loading 32-bit binary, entry=0x%x, sp=0x%x\n",
+               (unsigned int)entry, (unsigned int)sp);
+        // Now set 32-bit values (upper 32 bits already cleared above)
+        current->cpu.rsp = (qword_t)sp;  // Zero-extend to 64 bits
+        current->cpu.rip = (qword_t)entry;  // Zero-extend to 64 bits
     }
     current->cpu.fcw = 0x37f;
 
