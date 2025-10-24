@@ -479,10 +479,12 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
 
     // argc
     if (header.bitness == ELF_64BIT) {
-        if (user_put(p, (qword_t)argv.count))
+        qword_t argc64 = argv.count;
+        if (user_put(p, argc64))
             return _EFAULT;
     } else {
-        if (user_put(p, (dword_t)argv.count))
+        dword_t argc32 = argv.count;
+        if (user_put(p, argc32))
             return _EFAULT;
     }
     p += ptr_size;
@@ -491,10 +493,12 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     size_t argc = argv.count;
     while (argc-- > 0) {
         if (header.bitness == ELF_64BIT) {
-            if (user_put(p, (qword_t)argv_addr))
+            qword_t ptr64 = argv_addr;
+            if (user_put(p, ptr64))
                 return _EFAULT;
         } else {
-            if (user_put(p, (dword_t)argv_addr))
+            dword_t ptr32 = argv_addr;
+            if (user_put(p, ptr32))
                 return _EFAULT;
         }
         argv_addr += user_strlen(argv_addr) + 1;
@@ -506,10 +510,12 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     size_t envc = envp.count;
     while (envc-- > 0) {
         if (header.bitness == ELF_64BIT) {
-            if (user_put(p, (qword_t)envp_addr))
+            qword_t ptr64 = envp_addr;
+            if (user_put(p, ptr64))
                 return _EFAULT;
         } else {
-            if (user_put(p, (dword_t)envp_addr))
+            dword_t ptr32 = envp_addr;
+            if (user_put(p, ptr32))
                 return _EFAULT;
         }
         envp_addr += user_strlen(envp_addr) + 1;
